@@ -344,6 +344,62 @@ th { color: var(--muted); font-weight: 600; background: var(--sky); }
 .chart-card { height: 280px; min-height: 220px; }
 input[type='date'] { min-height: 44px; width: min(100%, 220px); }
 
+/* Десктоп: фиксированный синий сайдбар — без белой полосы при скролле */
+@media (min-width: 1025px) {
+  .layout {
+    display: block;
+    min-height: 100dvh;
+  }
+  .layout::before {
+    content: '';
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 172px;
+    z-index: 20;
+    pointer-events: none;
+    background:
+      radial-gradient(120% 70% at 10% -10%, rgba(22, 140, 235, 0.55) 0%, transparent 55%),
+      radial-gradient(90% 50% at 110% 30%, rgba(8, 117, 209, 0.45) 0%, transparent 50%),
+      linear-gradient(180deg, #0875d1 0%, #004a96 72%, #003e80 100%);
+  }
+  .side {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 172px;
+    height: 100vh;
+    height: 100dvh;
+    z-index: 30;
+    box-shadow: 4px 0 24px rgba(0, 40, 90, 0.12);
+  }
+  .side-milk { height: 54%; }
+  .side-inner {
+    max-height: 100dvh;
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+  }
+  .nav {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
+    margin-right: -4px;
+    padding-right: 4px;
+  }
+  .nav::-webkit-scrollbar { width: 5px; }
+  .nav::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.32);
+    border-radius: 8px;
+  }
+  .main {
+    margin-left: 172px;
+    min-height: 100dvh;
+    width: auto;
+  }
+}
+
 /* Планшет */
 @media (max-width: 1100px) {
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
