@@ -328,7 +328,7 @@ th { color: var(--muted); font-weight: 600; background: var(--sky); }
 }
 .dstop { background: #fff; border-radius: 16px; padding: 14px; margin: 10px 0; border: 1px solid var(--line); }
 .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-.mob-bar, .nav-scrim, .side-close { display: none; }
+.mob-bar, .mob-logout, .nav-scrim, .side-close { display: none; }
 .table-scroll {
   width: 100%;
   overflow-x: auto;
@@ -449,12 +449,31 @@ input[type='date'] { min-height: 44px; width: min(100%, 220px); }
     flex-shrink: 0;
   }
   .mob-title {
+    flex: 1;
+    min-width: 0;
     font-weight: 700;
     font-size: 15px;
     color: var(--ink);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .mob-logout {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    margin-left: auto;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .mob-logout:hover {
+    background: rgba(22, 140, 235, 0.1);
+    color: var(--brand);
   }
   .nav-scrim {
     display: block;
@@ -622,6 +641,6 @@ input[type='date'] { min-height: 44px; width: min(100%, 220px); }
 }
 
 @media (hover: none) and (pointer: coarse) {
-  .btn, .nav a, .chip, .side-logout, .mob-menu { min-height: 44px; }
+  .btn, .nav a, .chip, .side-logout, .mob-menu, .mob-logout { min-height: 44px; }
   th, td { padding: 12px 10px; }
 }

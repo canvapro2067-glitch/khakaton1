@@ -54,6 +54,11 @@ export default function Layout({ children, user, onLogout }: { children: React.R
     ['/analytics', 'Аналитика', BarChart3],
     ['/settings', 'Настройки', Settings],
   ] as const
+  const handleLogout = () => {
+    clearToken()
+    onLogout?.()
+    nav('/login')
+  }
   return (
     <div className={`layout ${navOpen ? 'nav-open' : ''}`}>
       <header className="mob-bar">
@@ -62,6 +67,9 @@ export default function Layout({ children, user, onLogout }: { children: React.R
         </button>
         <Logo size={36} wide />
         <span className="mob-title">Молочный мир</span>
+        <button type="button" className="mob-logout" title="Выйти" aria-label="Выйти" onClick={handleLogout}>
+          <LogOut size={20} />
+        </button>
       </header>
       {navOpen ? <button type="button" className="nav-scrim" aria-label="Закрыть меню" onClick={() => setNavOpen(false)} /> : null}
       <aside className={`side ${navOpen ? 'open' : ''}`}>
@@ -90,15 +98,7 @@ export default function Layout({ children, user, onLogout }: { children: React.R
               <b>{user?.full_name || 'Диспетчер'}</b>
               <span>{user?.username || 'Молочный мир'}</span>
             </div>
-            <button
-              className="side-logout"
-              title="Выйти"
-              onClick={() => {
-                clearToken()
-                onLogout?.()
-                nav('/login')
-              }}
-            >
+            <button className="side-logout" title="Выйти" onClick={handleLogout}>
               <LogOut size={18} />
             </button>
           </div>
