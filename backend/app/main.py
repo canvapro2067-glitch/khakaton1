@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api import router, run_solver
-from .config import CORS_ORIGINS, EXCEL_PATH, route_geometry_enabled
+from .config import CORS_ORIGINS, EXCEL_PATH, YANDEX_MAPS_API_KEY, route_geometry_enabled
 from .database import Base, SessionLocal, engine
 from .migrate import ensure_schema
 from .models import Order, Route
@@ -62,6 +62,28 @@ def startup():
                 db2.close()
 
         threading.Thread(target=_backfill_road_geometry, daemon=True, name="road-geometry").start()
+
+    def _regeocode_stale_orders() -> None:
+        db3 = SessionLocal()
+        try:
+            from .models import Order
+            from .async_util import run_coro_sync
+            from .services.geocode_resolve import apply_geocode_to_orders
+
+            stale = (
+                db3.query(Order)
+                .filter((Order.geo_source != "yandex") & (Order.geo_source != "osm"))
+                .count()
+            )
+            if stale:
+                orders = db3.query(Order).order_by(Order.id).all()
+                run_coro_sync(apply_geocode_to_orders(orders, db=db3))
+        except Exception:
+            pass
+        finally:
+            db3.close()
+
+    threading.Thread(target=_regeocode_stale_orders, daemon=True, name="regeocode-orders").start()
 
 
 @app.get("/api/health")

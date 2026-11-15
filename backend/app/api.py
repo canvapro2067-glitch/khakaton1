@@ -30,7 +30,8 @@ from .seed import seed_if_empty
 from .serialize import depot_dict, order_dict, restriction_dict, route_dict, stop_dict, user_dict, vehicle_dict
 from .services.costs import fleet_costs
 from .services.excel_import import import_workbook, preview_workbook
-from .services.geo import DEPOT, geocode_address
+from .services.geo import DEPOT
+from .services.geocode_resolve import apply_geocode_to_orders, resolve_address_coords
 from .services.restrictions import historic_forbidden_geometry, vehicle_allowed
 from .services.routing_geometry import road_polyline
 from .services.vrp import SolveOrder, SolveVehicle, solve
@@ -604,7 +605,7 @@ def list_orders(db: Session = Depends(get_db), user: User = Depends(require_disp
 def create_order(body: OrderPatch, db: Session = Depends(get_db), user: User = Depends(require_dispatcher)):
     if not body.name or not body.address:
         raise HTTPException(400, "Нужны название и адрес")
-    lat, lon, src = geocode_address(body.address)
+    lat, lon, src = run_coro_sync(resolve_address_coords(body.address))
     from .services.geo import is_historic_address
 
     o = Order(
@@ -624,6 +625,14 @@ def create_order(body: OrderPatch, db: Session = Depends(get_db), user: User = D
     db.commit()
     db.refresh(o)
     return order_dict(o)
+
+
+@router.post("/orders/regeocode")
+async def regeocode_orders(db: Session = Depends(get_db), user: User = Depends(require_dispatcher)):
+    """Пересчитать координаты всех заказов (Яндекс / OSM). После смены точек пересоберите маршруты."""
+    orders = db.query(Order).order_by(Order.id).all()
+    stats = await apply_geocode_to_orders(orders, db=db)
+    return {"ok": True, **stats}
 
 
 @router.delete("/orders/{oid}")
@@ -647,7 +656,7 @@ def patch_order(oid: int, body: OrderPatch, db: Session = Depends(get_db), user:
     for k, v in data.items():
         setattr(o, k, v)
     if "address" in data and ("lat" not in data or "lon" not in data):
-        lat, lon, src = geocode_address(o.address)
+        lat, lon, src = run_coro_sync(resolve_address_coords(o.address))
         o.lat, o.lon, o.geo_source = lat, lon, src
         from .services.geo import is_historic_address
 

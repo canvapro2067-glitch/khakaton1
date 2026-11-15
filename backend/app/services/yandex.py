@@ -15,19 +15,36 @@ def maps_key() -> str:
 
 async def geocode(address: str) -> tuple[float, float] | None:
     key = YANDEX_MAPS_API_KEY
-    if not key:
+    addr = (address or "").strip()
+    if not key or not addr:
         return None
     url = "https://geocode-maps.yandex.ru/1.x/"
-    params = {"apikey": key, "geocode": f"Беларусь, Гродно, {address}", "format": "json"}
+    queries = [
+        f"Беларусь, Гродно, {addr}",
+        f"Гродно, {addr}",
+        addr,
+    ]
+    seen: set[str] = set()
     try:
         async with httpx.AsyncClient(timeout=12) as client:
-            r = await client.get(url, params=params)
-            r.raise_for_status()
-            pos = r.json()["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"]["Point"]["pos"]
-            lon, lat = map(float, pos.split())
-            return lat, lon
+            for q in queries:
+                if q in seen:
+                    continue
+                seen.add(q)
+                r = await client.get(url, params={"apikey": key, "geocode": q, "format": "json", "results": 1})
+                if r.status_code != 200:
+                    continue
+                members = r.json().get("response", {}).get("GeoObjectCollection", {}).get("featureMember") or []
+                if not members:
+                    continue
+                pos = members[0].get("GeoObject", {}).get("Point", {}).get("pos")
+                if not pos:
+                    continue
+                lon, lat = map(float, str(pos).split())
+                return lat, lon
     except Exception:
         return None
+    return None
 
 
 def _chunks(items, n=49):

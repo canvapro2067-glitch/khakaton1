@@ -4,8 +4,10 @@ from datetime import datetime
 from openpyxl import load_workbook
 from sqlalchemy.orm import Session
 
+from ..async_util import run_coro_sync
 from ..models import Order
-from .geo import geocode_address, is_historic_address
+from .geo import is_historic_address
+from .geocode_resolve import resolve_many
 
 SKIP_ADDR = {"общий объем, кг", "общий объем"}
 SKIP_ORG_PREFIX = ("транспорт", "грузоподъемность", "загрузка", "торговые объекты", "весь транспорт", "для наиболее", "необходимо скоратить", "необходимо сократить", "тоннаж на каждый", "рабочий день")
@@ -87,16 +89,17 @@ def import_workbook(db: Session, path, replace: bool = True) -> dict:
         db.query(Order).delete()
         db.commit()
 
+    coords = run_coro_sync(resolve_many([rec["address"] for rec in parsed])) if parsed else []
+
     created = []
-    for rec in parsed:
+    for rec, (lat, lon, src) in zip(parsed, coords):
         name, address, weight, pref = rec["name"], rec["address"], rec["weight_kg"], rec["preferred_time"]
         dup = rec["is_duplicate"]
-        lat, lon, src = geocode_address(address)
         historic = is_historic_address(address)
         warning = []
         if dup:
             warning.append("Возможный дубль (та же организация и адрес)")
-        if src == "approx":
+        if src not in ("yandex", "osm"):
             warning.append("Координаты приблизительные, рекомендуется проверить")
         order = Order(
             name=name.strip(),

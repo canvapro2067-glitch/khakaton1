@@ -15,6 +15,14 @@ export default function Dispatcher() {
   const [confirmSolve, setConfirmSolve] = useState(false)
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const roadGeomTried = useRef(false)
+  const regeocodeTried = useRef(false)
+
+  function ordersNeedAccurateGeo(orders: any[] | undefined) {
+    if (!orders?.length) return false
+    return orders.some(
+      (o) => !o.geo_source || o.geo_source === 'approx' || String(o.geo_source).startsWith('street:'),
+    )
+  }
 
   function routesNeedRoadGeometry(routes: any[] | undefined) {
     if (!routes?.length) return false
@@ -23,6 +31,21 @@ export default function Dispatcher() {
 
   async function load() {
     let d: any = await api('/api/dashboard')
+    if (ordersNeedAccurateGeo(d.orders) && !regeocodeTried.current) {
+      regeocodeTried.current = true
+      roadGeomTried.current = false
+      setBusy(true)
+      setMsg('Уточняем координаты адресов (Яндекс / OSM)…')
+      try {
+        await api('/api/orders/regeocode', { method: 'POST' })
+        d = await api('/api/dashboard')
+        setMsg('Адреса обновлены. При необходимости нажмите «Оптимизировать маршруты».')
+      } catch (e: any) {
+        setMsg(e.message || 'Не удалось обновить координаты адресов.')
+      } finally {
+        setBusy(false)
+      }
+    }
     if (routesNeedRoadGeometry(d.routes) && !roadGeomTried.current) {
       roadGeomTried.current = true
       setBusy(true)
