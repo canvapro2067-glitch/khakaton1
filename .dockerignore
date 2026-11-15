@@ -1,0 +1,11 @@
+frontend/
+.git/
+moloko-tiiny.zip
+design-references/
+**/__pycache__/
+*.db
+.env
+.env.txt
+.venv/
+.agent/
+.cursor/
