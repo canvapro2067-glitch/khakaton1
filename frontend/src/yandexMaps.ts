@@ -39,22 +39,34 @@ const GRODNO_BOUNDS: number[][] = [
   [53.78, 23.96],
 ]
 
+function grodnoQuery(address: string) {
+  let a = address.trim()
+  a = a.replace(/сов\.?\s*пограничников/gi, 'улица Советских Пограничников')
+  a = a.replace(/я\.?\s*купалы/gi, 'проспект Янки Купалы')
+  if (!/ул|улица|проспект|шоссе|бульвар|переулок|блк/i.test(a)) {
+    const m = a.match(/^(.+?)\s+(\d+.*)$/)
+    if (m) a = `улица ${m[1]}, ${m[2]}`
+  }
+  return /гродно/i.test(a) ? a : `Беларусь, город Гродно, ${a}`
+}
+
+function asGrodnoLonLat(a: number, b: number): [number, number] | null {
+  if (a >= 53.58 && a <= 53.78 && b >= 23.68 && b <= 23.96) return [a, b]
+  if (b >= 53.58 && b <= 53.78 && a >= 23.68 && a <= 23.96) return [b, a]
+  return null
+}
+
 export async function geocodeInGrodno(address: string): Promise<[number, number] | null> {
   if (typeof ymaps === 'undefined' || !address?.trim()) return null
-  const query = /гродно/i.test(address) ? address.trim() : `Беларусь, Гродно, ${address.trim()}`
   try {
-    const res = await ymaps.geocode(query, {
+    const res = await ymaps.geocode(grodnoQuery(address), {
       boundedBy: GRODNO_BOUNDS,
-      strictBounds: true,
       results: 1,
     })
     const obj = res.geoObjects.get(0)
     if (!obj) return null
     const c = obj.geometry.getCoordinates()
-    const lat = Number(c[0])
-    const lon = Number(c[1])
-    if (lat < 53.58 || lat > 53.78 || lon < 23.68 || lon > 23.96) return null
-    return [lat, lon]
+    return asGrodnoLonLat(Number(c[0]), Number(c[1]))
   } catch {
     return null
   }

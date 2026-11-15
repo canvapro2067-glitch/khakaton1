@@ -31,7 +31,7 @@ from .serialize import depot_dict, order_dict, restriction_dict, route_dict, sto
 from .services.costs import fleet_costs
 from .services.excel_import import import_workbook, preview_workbook
 from .services.geo import DEPOT, in_grodno
-from .services.geocode_resolve import apply_geocode_to_orders, resolve_address_coords
+from .services.geocode_resolve import apply_geocode_to_orders, normalize_grodno_ll, resolve_address_coords
 from .services.restrictions import historic_forbidden_geometry, vehicle_allowed
 from .services.routing_geometry import road_polyline
 from .services.vrp import SolveOrder, SolveVehicle, solve
@@ -651,13 +651,13 @@ def apply_order_coords(body: OrderCoordsIn, db: Session = Depends(get_db), user:
     """Координаты с Яндекс.Карт (JS-геокодер в браузере) — точные дома."""
     n = 0
     for it in body.items:
-        if not in_grodno(it.lat, it.lon):
+        pt = normalize_grodno_ll(it.lat, it.lon)
+        if not pt:
             continue
         o = db.get(Order, it.id)
         if not o:
             continue
-        o.lat = it.lat
-        o.lon = it.lon
+        o.lat, o.lon = pt
         o.geo_source = it.source or "yandex"
         warn_parts = [p for p in (o.warning or "").split("; ") if p and "Координаты" not in p]
         o.warning = "; ".join(warn_parts)

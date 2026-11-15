@@ -21,7 +21,10 @@ export default function Dispatcher() {
 
   function ordersNeedAccurateGeo(orders: any[] | undefined) {
     if (!orders?.length) return false
-    return orders.some((o) => o.geo_source !== 'yandex')
+    return orders.some((o) => {
+      const s = String(o.geo_source || '')
+      return !s || s === 'approx' || s.startsWith('street:')
+    })
   }
 
   function routesNeedRoadGeometry(routes: any[] | undefined) {
@@ -41,10 +44,13 @@ export default function Dispatcher() {
       setBusy(true)
       setMsg('Уточняем координаты домов по Яндекс.Картам…')
       try {
+        await api('/api/orders/regeocode', { method: 'POST' })
+        d = await api('/api/dashboard')
         const key = c.yandex_maps_key
-        if (key) {
+        const stillRough = ordersNeedAccurateGeo(d.orders)
+        if (key && stillRough) {
           await loadYandexMaps(key)
-          const need = (d.orders || []).filter((o: any) => o.geo_source !== 'yandex' && o.address)
+          const need = (d.orders || []).filter((o: any) => o.address && ordersNeedAccurateGeo([o]))
           const found = await geocodeAddresses(
             need.map((o: any) => o.address),
             (done, total) => setMsg(`Геокодер Яндекса: ${done} / ${total} адресов…`),
@@ -56,17 +62,15 @@ export default function Dispatcher() {
           }
           if (items.length) {
             await api('/api/orders/apply-coords', { method: 'POST', body: JSON.stringify({ items }) })
-            try {
-              await api('/api/routes/rebuild-geometries', { method: 'POST' })
-            } catch {
-              /* линии пересчитаются после «Оптимизировать» */
-            }
           }
-        } else {
-          await api('/api/orders/regeocode', { method: 'POST' })
+        }
+        try {
+          await api('/api/routes/rebuild-geometries', { method: 'POST' })
+        } catch {
+          /* линии пересчитаются после «Оптимизировать» */
         }
         d = await api('/api/dashboard')
-        setMsg('Точки стоят по домам Яндекса. Нажмите «Оптимизировать маршруты», чтобы пересчитать рейсы.')
+        setMsg('Координаты домов обновлены. Нажмите «Оптимизировать маршруты», чтобы пересчитать рейсы.')
       } catch (e: any) {
         setMsg(e.message || 'Не удалось уточнить адреса.')
       } finally {

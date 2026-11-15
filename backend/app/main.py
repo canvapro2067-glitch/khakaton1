@@ -63,24 +63,22 @@ def startup():
 
         threading.Thread(target=_backfill_road_geometry, daemon=True, name="road-geometry").start()
 
-    if YANDEX_MAPS_API_KEY:
+    def _regeocode_stale_orders() -> None:
+        db3 = SessionLocal()
+        try:
+            from .async_util import run_coro_sync
+            from .models import Order
+            from .services.geocode_resolve import apply_geocode_to_orders
 
-        def _regeocode_stale_orders() -> None:
-            db3 = SessionLocal()
-            try:
-                from .async_util import run_coro_sync
-                from .models import Order
-                from .services.geocode_resolve import apply_geocode_to_orders
+            orders = db3.query(Order).order_by(Order.id).all()
+            if orders:
+                run_coro_sync(apply_geocode_to_orders(orders, db=db3))
+        except Exception:
+            pass
+        finally:
+            db3.close()
 
-                orders = db3.query(Order).filter(Order.geo_source != "yandex").order_by(Order.id).all()
-                if orders:
-                    run_coro_sync(apply_geocode_to_orders(orders, db=db3))
-            except Exception:
-                pass
-            finally:
-                db3.close()
-
-        threading.Thread(target=_regeocode_stale_orders, daemon=True, name="regeocode-orders").start()
+    threading.Thread(target=_regeocode_stale_orders, daemon=True, name="regeocode-orders").start()
 
 
 @app.get("/api/health")
