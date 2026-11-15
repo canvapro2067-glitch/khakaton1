@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 import math
 from datetime import datetime
 from typing import Optional
@@ -431,7 +432,9 @@ def run_solver(db: Session):
     sv = [SolveVehicle(id=v.id, plate=v.plate, capacity=v.capacity_kg, raw=v) for v in vehicles]
     result = solve(so, sv, restrictions, st, depot=depot_tuple(st))
     persist_solution(db, result)
-    asyncio.run(fill_route_geometries(db))
+    skip_geom = os.getenv("SKIP_ROUTE_GEOMETRY", "").lower() in ("1", "true", "yes")
+    if not skip_geom:
+        asyncio.run(fill_route_geometries(db))
     return result
 
 
