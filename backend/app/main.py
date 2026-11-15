@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -29,7 +31,8 @@ def startup():
         seed_if_empty(db)
         if db.query(Order).count() == 0 and EXCEL_PATH.exists():
             import_workbook(db, EXCEL_PATH, replace=True)
-            run_solver(db)
+            if os.getenv("SKIP_STARTUP_SOLVE", "").lower() not in ("1", "true", "yes"):
+                run_solver(db)
     finally:
         db.close()
 

@@ -8,4 +8,8 @@ services:
     envVars:
       - key: DATABASE_URL
         value: sqlite:////tmp/moloko.db
+      - key: SKIP_STARTUP_SOLVE
+        value: "1"
+      - key: PYTHONPATH
+        value: /app
     autoDeploy: true

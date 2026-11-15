@@ -2,9 +2,17 @@
 
 Репозиторий: **https://github.com/canvapro2067-glitch/khakaton1**
 
-Netlify собирает только **фронт** (`frontend`). API — на **Render** (файл `render.yaml` в корне) или туннель с ПК.
+Netlify собирает только **фронт** (`frontend`). Для входа и данных нужен **backend API** (Python на Render / туннель с ПК) — без него на Netlify будет только «оболочка».
 
-## 1. API на Render (рекомендуется)
+### Проще всего для защиты (без Render)
+
+1. На ПК: `start.ps1` (API + локальный фронт) **или** только API + `npx localtunnel --port 8000`.
+2. Netlify: переменная `VITE_API_URL` = URL туннеля, **Trigger deploy**.
+3. Пока идёт демо — **ПК и туннель включены**.
+
+Render можно не использовать, если не нужен API «в облаке без вашего компьютера».
+
+## 1. API на Render (опционально)
 
 1. [dashboard.render.com](https://dashboard.render.com) → **New** → **Blueprint** → подключите GitHub → репозиторий `khakaton1`.
 2. Render создаст сервис `moloko-api`. Дождитесь **Live**.
