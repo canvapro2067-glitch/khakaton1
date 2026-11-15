@@ -1,31 +1,25 @@
 # Netlify + GitHub
 
-Netlify собирает только **фронт** из папки `frontend`. API — отдельно (Render, Railway, туннель).
+Репозиторий: **https://github.com/canvapro2067-glitch/khakaton1**
 
-## 1. Репозиторий на GitHub
+Netlify собирает только **фронт** (`frontend`). API — на **Render** (файл `render.yaml` в корне) или туннель с ПК.
 
-```powershell
-cd D:\Project\ProjectXakaton
-git init -b main
-git add .
-git commit -m "Initial commit"
-```
+## 1. API на Render (рекомендуется)
 
-Создайте пустой репозиторий на GitHub (без README), затем:
-
-```powershell
-git remote add origin https://github.com/ВАШ_ЛОГИН/ИМЯ_РЕПО.git
-git push -u origin main
-```
+1. [dashboard.render.com](https://dashboard.render.com) → **New** → **Blueprint** → подключите GitHub → репозиторий `khakaton1`.
+2. Render создаст сервис `moloko-api`. Дождитесь **Live**.
+3. Скопируйте URL вида `https://moloko-api-xxxx.onrender.com` (без `/` в конце).
+4. В **Environment** на Render при необходимости добавьте `YANDEX_MAPS_API_KEY` из `.env`.
 
 ## 2. Netlify
 
 1. [app.netlify.com](https://app.netlify.com) → **Add new site** → **Import an existing project** → **GitHub**.
 2. Если просит доступ — [настройки установки GitHub](https://github.com/settings/installations) → **Netlify** → разрешить нужные репозитории.
-3. Выберите репозиторий. Настройки подтянутся из `netlify.toml` в корне.
-4. **Site configuration → Environment variables** → добавьте:
-   - `VITE_API_URL` = `https://ваш-публичный-api` (без слэша в конце)
-5. **Deploy**.
+3. Выберите репозиторий **canvapro2067-glitch/khakaton1**. Настройки из `netlify.toml`.
+4. **Site configuration → Environment variables** → **Add a variable**:
+   - Key: `VITE_API_URL`
+   - Value: URL Render, например `https://moloko-api-xxxx.onrender.com`
+5. **Deploys → Trigger deploy → Deploy site** (переменные Vite применяются при сборке).
 
 Не задавайте `VITE_STATIC_HOST=tiiny` — на Netlify используется обычный `BrowserRouter` и `_redirects`.
 
