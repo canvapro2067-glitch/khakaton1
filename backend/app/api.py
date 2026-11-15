@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 
+from .async_util import run_coro_sync
 from .auth import create_token, get_current_user, hash_password, require_dispatcher, require_driver, verify_password
 from .config import EXCEL_PATH, YANDEX_MAPS_API_KEY, route_geometry_enabled
 from .database import get_db
@@ -408,7 +409,7 @@ def persist_solution(db: Session, result) -> None:
     db.commit()
 
 
-def run_solver(db: Session):
+def run_solver(db: Session, *, fill_geometry: bool = True):
     orders = db.query(Order).all()
     vehicles = db.query(Vehicle).all()
     restrictions = db.query(RoadRestriction).all()
@@ -432,8 +433,8 @@ def run_solver(db: Session):
     sv = [SolveVehicle(id=v.id, plate=v.plate, capacity=v.capacity_kg, raw=v) for v in vehicles]
     result = solve(so, sv, restrictions, st, depot=depot_tuple(st))
     persist_solution(db, result)
-    if route_geometry_enabled():
-        asyncio.run(fill_route_geometries(db))
+    if fill_geometry and route_geometry_enabled():
+        run_coro_sync(fill_route_geometries(db))
     return result
 
 

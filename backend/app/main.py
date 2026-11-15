@@ -33,10 +33,10 @@ def startup():
         if db.query(Order).count() == 0 and EXCEL_PATH.exists():
             import_workbook(db, EXCEL_PATH, replace=True)
             if os.getenv("SKIP_STARTUP_SOLVE", "").lower() not in ("1", "true", "yes"):
-                run_solver(db)
+                run_solver(db, fill_geometry=False)
         if db.query(Route).count() == 0 and db.query(Order).count() > 0:
             if os.getenv("AUTO_SOLVE_IF_EMPTY", "1").lower() not in ("0", "false", "no"):
-                run_solver(db)
+                run_solver(db, fill_geometry=False)
     finally:
         db.close()
 
@@ -53,9 +53,9 @@ def startup():
                     .count()
                 )
                 if missing and db2.query(Route).count() > 0:
-                    import asyncio
+                    from .async_util import run_coro_sync
 
-                    asyncio.run(fill_route_geometries(db2))
+                    run_coro_sync(fill_route_geometries(db2))
             except Exception:
                 pass
             finally:

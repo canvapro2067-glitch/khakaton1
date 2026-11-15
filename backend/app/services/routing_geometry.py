@@ -1,10 +1,9 @@
 """Геометрия рейса по дорогам: Яндекс Routing (если ключ валиден) или OSRM."""
 from __future__ import annotations
 
-import asyncio
-
 import httpx
 
+from ..async_util import run_coro_sync
 from ..config import YANDEX_MAPS_API_KEY, YANDEX_ROUTING_API_KEY
 from .yandex import route_geometry as yandex_route_geometry
 
@@ -49,4 +48,4 @@ async def road_polyline(points: list[tuple[float, float]]) -> list[list[float]]:
 
 
 def road_polyline_sync(points: list[tuple[float, float]]) -> list[list[float]]:
-    return asyncio.run(road_polyline(points))
+    return run_coro_sync(road_polyline(points))
