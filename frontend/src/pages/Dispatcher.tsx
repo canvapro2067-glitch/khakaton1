@@ -22,7 +22,7 @@ export default function Dispatcher() {
   }
 
   async function load() {
-    let d = await api('/api/dashboard')
+    let d: any = await api('/api/dashboard')
     if (routesNeedRoadGeometry(d.routes) && !roadGeomTried.current) {
       roadGeomTried.current = true
       setBusy(true)
