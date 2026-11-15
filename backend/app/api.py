@@ -30,7 +30,7 @@ from .seed import seed_if_empty
 from .serialize import depot_dict, order_dict, restriction_dict, route_dict, stop_dict, user_dict, vehicle_dict
 from .services.costs import fleet_costs
 from .services.excel_import import import_workbook, preview_workbook
-from .services.geo import DEPOT
+from .services.geo import DEPOT, in_grodno
 from .services.geocode_resolve import apply_geocode_to_orders, resolve_address_coords
 from .services.restrictions import historic_forbidden_geometry, vehicle_allowed
 from .services.routing_geometry import road_polyline
@@ -126,6 +126,17 @@ class GeoIn(BaseModel):
     lat: Optional[float] = None
     lon: Optional[float] = None
     enabled: Optional[bool] = None
+
+
+class OrderCoordIn(BaseModel):
+    id: int
+    lat: float
+    lon: float
+    source: str = "yandex"
+
+
+class OrderCoordsIn(BaseModel):
+    items: list[OrderCoordIn]
 
 
 class StopEventIn(BaseModel):
@@ -629,10 +640,30 @@ def create_order(body: OrderPatch, db: Session = Depends(get_db), user: User = D
 
 @router.post("/orders/regeocode")
 async def regeocode_orders(db: Session = Depends(get_db), user: User = Depends(require_dispatcher)):
-    """Пересчитать координаты всех заказов (Яндекс / OSM). После смены точек пересоберите маршруты."""
+    """Пересчитать координаты заказов через Яндекс.Геокодер. OSM не используем."""
     orders = db.query(Order).order_by(Order.id).all()
     stats = await apply_geocode_to_orders(orders, db=db)
     return {"ok": True, **stats}
+
+
+@router.post("/orders/apply-coords")
+def apply_order_coords(body: OrderCoordsIn, db: Session = Depends(get_db), user: User = Depends(require_dispatcher)):
+    """Координаты с Яндекс.Карт (JS-геокодер в браузере) — точные дома."""
+    n = 0
+    for it in body.items:
+        if not in_grodno(it.lat, it.lon):
+            continue
+        o = db.get(Order, it.id)
+        if not o:
+            continue
+        o.lat = it.lat
+        o.lon = it.lon
+        o.geo_source = it.source or "yandex"
+        warn_parts = [p for p in (o.warning or "").split("; ") if p and "Координаты" not in p]
+        o.warning = "; ".join(warn_parts)
+        n += 1
+    db.commit()
+    return {"ok": True, "updated": n}
 
 
 @router.delete("/orders/{oid}")

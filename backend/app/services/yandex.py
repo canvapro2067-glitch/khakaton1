@@ -6,7 +6,7 @@ import json
 import httpx
 
 from ..config import YANDEX_MAPS_API_KEY, YANDEX_ROUTING_API_KEY
-from .geo import DEPOT
+from .geo import DEPOT, in_grodno
 
 
 def maps_key() -> str:
@@ -31,7 +31,17 @@ async def geocode(address: str) -> tuple[float, float] | None:
                 if q in seen:
                     continue
                 seen.add(q)
-                r = await client.get(url, params={"apikey": key, "geocode": q, "format": "json", "results": 1})
+                r = await client.get(
+                    url,
+                    params={
+                        "apikey": key,
+                        "geocode": q,
+                        "format": "json",
+                        "results": 1,
+                        "bbox": "23.68,53.58~23.96,53.78",
+                        "rspn": "1",
+                    },
+                )
                 if r.status_code != 200:
                     continue
                 members = r.json().get("response", {}).get("GeoObjectCollection", {}).get("featureMember") or []
@@ -41,6 +51,8 @@ async def geocode(address: str) -> tuple[float, float] | None:
                 if not pos:
                     continue
                 lon, lat = map(float, str(pos).split())
+                if not in_grodno(lat, lon):
+                    continue
                 return lat, lon
     except Exception:
         return None

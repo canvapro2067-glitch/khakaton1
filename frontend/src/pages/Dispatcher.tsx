@@ -5,6 +5,7 @@ import MapBoard from '../MapBoard'
 import { api } from '../api'
 import { fmtDriverTime } from '../driverFormat'
 import { statusLabel } from '../statusLabels'
+import { geocodeAddresses, loadYandexMaps } from '../yandexMaps'
 
 export default function Dispatcher() {
   const [data, setData] = useState<any>(null)
@@ -16,12 +17,11 @@ export default function Dispatcher() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const roadGeomTried = useRef(false)
   const regeocodeTried = useRef(false)
+  const geoLock = useRef(false)
 
   function ordersNeedAccurateGeo(orders: any[] | undefined) {
     if (!orders?.length) return false
-    return orders.some(
-      (o) => !o.geo_source || o.geo_source === 'approx' || String(o.geo_source).startsWith('street:'),
-    )
+    return orders.some((o) => o.geo_source !== 'yandex')
   }
 
   function routesNeedRoadGeometry(routes: any[] | undefined) {
@@ -30,19 +30,47 @@ export default function Dispatcher() {
   }
 
   async function load() {
+    if (geoLock.current) return
+    const c: any = await api('/api/config')
+    setCfg(c)
     let d: any = await api('/api/dashboard')
     if (ordersNeedAccurateGeo(d.orders) && !regeocodeTried.current) {
       regeocodeTried.current = true
+      geoLock.current = true
       roadGeomTried.current = false
       setBusy(true)
-      setMsg('Уточняем координаты адресов (Яндекс / OSM)…')
+      setMsg('Уточняем координаты домов по Яндекс.Картам…')
       try {
-        await api('/api/orders/regeocode', { method: 'POST' })
+        const key = c.yandex_maps_key
+        if (key) {
+          await loadYandexMaps(key)
+          const need = (d.orders || []).filter((o: any) => o.geo_source !== 'yandex' && o.address)
+          const found = await geocodeAddresses(
+            need.map((o: any) => o.address),
+            (done, total) => setMsg(`Геокодер Яндекса: ${done} / ${total} адресов…`),
+          )
+          const items: { id: number; lat: number; lon: number; source: string }[] = []
+          for (const o of need) {
+            const pt = found.get(String(o.address).trim())
+            if (pt) items.push({ id: o.id, lat: pt[0], lon: pt[1], source: 'yandex' })
+          }
+          if (items.length) {
+            await api('/api/orders/apply-coords', { method: 'POST', body: JSON.stringify({ items }) })
+            try {
+              await api('/api/routes/rebuild-geometries', { method: 'POST' })
+            } catch {
+              /* линии пересчитаются после «Оптимизировать» */
+            }
+          }
+        } else {
+          await api('/api/orders/regeocode', { method: 'POST' })
+        }
         d = await api('/api/dashboard')
-        setMsg('Адреса обновлены. При необходимости нажмите «Оптимизировать маршруты».')
+        setMsg('Точки стоят по домам Яндекса. Нажмите «Оптимизировать маршруты», чтобы пересчитать рейсы.')
       } catch (e: any) {
-        setMsg(e.message || 'Не удалось обновить координаты адресов.')
+        setMsg(e.message || 'Не удалось уточнить адреса.')
       } finally {
+        geoLock.current = false
         setBusy(false)
       }
     }
@@ -60,9 +88,7 @@ export default function Dispatcher() {
         setBusy(false)
       }
     }
-    const c = await api('/api/config')
     setData(d)
-    setCfg(c)
   }
   useEffect(() => {
     load().catch((e) => setMsg(e.message))

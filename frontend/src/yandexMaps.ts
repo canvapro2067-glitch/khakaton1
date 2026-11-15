@@ -34,6 +34,48 @@ export function loadYandexMaps(apiKey: string): Promise<any> {
   return pending
 }
 
+const GRODNO_BOUNDS: number[][] = [
+  [53.58, 23.68],
+  [53.78, 23.96],
+]
+
+export async function geocodeInGrodno(address: string): Promise<[number, number] | null> {
+  if (typeof ymaps === 'undefined' || !address?.trim()) return null
+  const query = /гродно/i.test(address) ? address.trim() : `Беларусь, Гродно, ${address.trim()}`
+  try {
+    const res = await ymaps.geocode(query, {
+      boundedBy: GRODNO_BOUNDS,
+      strictBounds: true,
+      results: 1,
+    })
+    const obj = res.geoObjects.get(0)
+    if (!obj) return null
+    const c = obj.geometry.getCoordinates()
+    const lat = Number(c[0])
+    const lon = Number(c[1])
+    if (lat < 53.58 || lat > 53.78 || lon < 23.68 || lon > 23.96) return null
+    return [lat, lon]
+  } catch {
+    return null
+  }
+}
+
+export async function geocodeAddresses(
+  addresses: string[],
+  onProgress?: (done: number, total: number) => void,
+): Promise<Map<string, [number, number]>> {
+  const out = new Map<string, [number, number]>()
+  const unique = [...new Set(addresses.map((a) => a.trim()).filter(Boolean))]
+  let done = 0
+  for (const addr of unique) {
+    const pt = await geocodeInGrodno(addr)
+    if (pt) out.set(addr, pt)
+    done += 1
+    onProgress?.(done, unique.length)
+  }
+  return out
+}
+
 export function stopHtml(o: any, assigned: any) {
   return `<b>${o.name}</b><br/>${o.address}<br/>Вес: ${o.weight_kg} кг
     ${assigned ? `<br/>Авто: ${assigned.vehicle.plate}<br/>ETA: ${assigned.eta}<br/>Статус: ${statusLabel(assigned.status)}` : '<br/>Не назначен'}

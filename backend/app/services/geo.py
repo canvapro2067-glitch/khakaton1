@@ -123,12 +123,20 @@ def is_historic_address(address: str) -> bool:
     return any(re.search(rf"(^|[\s,]){s}([\s,]|$|\d)", n) for s in HISTORIC_STREETS)
 
 
-def _house_offset(address: str) -> tuple[float, float]:
-    m = re.search(r"(\d+)", address.replace("БЛК", " 50 "))
-    if not m:
-        return (0.0, 0.0)
-    n = int(m.group(1))
-    return ((n % 47) - 23) * 0.00012, ((n * 3) % 31 - 15) * 0.00014
+GRODNO_LAT = (53.58, 53.78)
+GRODNO_LON = (23.68, 23.96)
+
+
+def in_grodno(lat: float, lon: float) -> bool:
+    return GRODNO_LAT[0] <= lat <= GRODNO_LAT[1] and GRODNO_LON[0] <= lon <= GRODNO_LON[1]
+
+
+def street_centroid(address: str) -> tuple[float, float] | None:
+    n = normalize(address)
+    for key in sorted(STREETS, key=len, reverse=True):
+        if key in n:
+            return STREETS[key]
+    return None
 
 
 def geocode_address(address: str) -> tuple[float, float, str]:
@@ -139,14 +147,9 @@ def geocode_address(address: str) -> tuple[float, float, str]:
             best_key = key
             break
     if not best_key:
-        h = abs(hash(n)) % 1000
-        lat = GRODNO_CENTER[0] + ((h % 40) - 20) * 0.0011
-        lon = GRODNO_CENTER[1] + ((h // 40) - 12) * 0.0014
-        dlat, dlon = _house_offset(address)
-        return lat + dlat, lon + dlon, "approx"
+        return GRODNO_CENTER[0], GRODNO_CENTER[1], "approx"
     lat, lon = STREETS[best_key]
-    dlat, dlon = _house_offset(address)
-    return lat + dlat, lon + dlon, f"street:{best_key}"
+    return lat, lon, f"street:{best_key}"
 
 
 def haversine_m(a: tuple[float, float], b: tuple[float, float]) -> float:
