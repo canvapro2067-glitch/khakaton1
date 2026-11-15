@@ -11,7 +11,7 @@ services:
       - key: SKIP_STARTUP_SOLVE
         value: "1"
       - key: SKIP_ROUTE_GEOMETRY
-        value: "1"
+        value: "0"
       - key: AUTO_SOLVE_IF_EMPTY
         value: "1"
       - key: PYTHONPATH

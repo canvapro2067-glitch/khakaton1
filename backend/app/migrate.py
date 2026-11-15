@@ -24,6 +24,11 @@ def ensure_schema() -> None:
             conn.execute(
                 text("UPDATE settings SET value = '09:00' WHERE key = 'work_start' AND value = '06:00'")
             )
+            conn.execute(
+                text(
+                    "UPDATE settings SET value = '2.89' WHERE key = 'fuel_price_byn' AND value = '2.45'"
+                )
+            )
     if insp.has_table("users"):
         ucols = {c["name"] for c in insp.get_columns("users")}
         _add_column("users", "phone", "phone VARCHAR(32) DEFAULT ''", ucols)

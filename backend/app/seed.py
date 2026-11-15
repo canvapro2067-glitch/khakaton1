@@ -40,7 +40,7 @@ DEFAULT_SETTINGS = {
     "depot_lat": f"{DEPOT['lat']:.4f}",
     "depot_lon": f"{DEPOT['lon']:.4f}",
     "fuel_l_per_100km": "18",
-    "fuel_price_byn": "2.45",
+    "fuel_price_byn": "2.89",
     "time_cost_byn_per_hour": "22",
     "cost_per_km": "0.45",
     "max_fill": "1.0",

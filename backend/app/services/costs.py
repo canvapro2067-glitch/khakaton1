@@ -47,7 +47,7 @@ def _fuel_byn(km: float, fuel_l_per_100km: float, fuel_price_byn: float) -> tupl
 
 def fleet_costs(routes: list[Route], vehicles: dict[int, Vehicle], settings: dict) -> dict:
     fuel_l = _float_setting(settings, "fuel_l_per_100km", 18.0)
-    fuel_price = _float_setting(settings, "fuel_price_byn", 2.45)
+    fuel_price = _float_setting(settings, "fuel_price_byn", 2.89)
 
     plan_km = sum(int(r.distance_m or 0) for r in routes) / 1000.0
     road_km = sum(route_distance_m(r) for r in routes) / 1000.0

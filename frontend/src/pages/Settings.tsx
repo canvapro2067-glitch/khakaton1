@@ -11,7 +11,7 @@ const DEFAULTS: Record<string, string> = {
   minimize_fleet: '1',
   unload_minutes: '25',
   fuel_l_per_100km: '18',
-  fuel_price_byn: '2.45',
+  fuel_price_byn: '2.89',
   work_start: '09:00',
   dispatcher_name: 'Диспетчер логистики',
   dispatcher_phone: '+375152000000',

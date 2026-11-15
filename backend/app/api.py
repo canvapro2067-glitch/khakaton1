@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 
 from .auth import create_token, get_current_user, hash_password, require_dispatcher, require_driver, verify_password
-from .config import EXCEL_PATH, YANDEX_MAPS_API_KEY
+from .config import EXCEL_PATH, YANDEX_MAPS_API_KEY, route_geometry_enabled
 from .database import get_db
 from .models import (
     DriverMessage,
@@ -432,8 +432,7 @@ def run_solver(db: Session):
     sv = [SolveVehicle(id=v.id, plate=v.plate, capacity=v.capacity_kg, raw=v) for v in vehicles]
     result = solve(so, sv, restrictions, st, depot=depot_tuple(st))
     persist_solution(db, result)
-    skip_geom = os.getenv("SKIP_ROUTE_GEOMETRY", "").lower() in ("1", "true", "yes")
-    if not skip_geom:
+    if route_geometry_enabled():
         asyncio.run(fill_route_geometries(db))
     return result
 
@@ -865,6 +864,19 @@ def feasibility(db: Session = Depends(get_db), user: User = Depends(require_disp
         "trip_slots": trip_slots,
         "warnings": warns,
     }
+
+
+@router.post("/routes/rebuild-geometries")
+async def rebuild_all_geometries(db: Session = Depends(get_db), user: User = Depends(require_dispatcher)):
+    """Пересчитать линии рейсов по дорогам (OSRM / Яндекс Routing) для всего парка."""
+    if not route_geometry_enabled():
+        raise HTTPException(
+            503,
+            "Геометрия отключена (SKIP_ROUTE_GEOMETRY=1 на сервере). Установите 0 и перезапустите API.",
+        )
+    await fill_route_geometries(db)
+    n = db.query(Route).count()
+    return {"ok": True, "routes": n}
 
 
 @router.post("/routes/{rid}/rebuild")

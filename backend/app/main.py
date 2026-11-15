@@ -1,10 +1,11 @@
 import os
+import threading
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api import router, run_solver
-from .config import CORS_ORIGINS, EXCEL_PATH
+from .config import CORS_ORIGINS, EXCEL_PATH, route_geometry_enabled
 from .database import Base, SessionLocal, engine
 from .migrate import ensure_schema
 from .models import Order, Route
@@ -38,6 +39,29 @@ def startup():
                 run_solver(db)
     finally:
         db.close()
+
+    if route_geometry_enabled():
+
+        def _backfill_road_geometry() -> None:
+            db2 = SessionLocal()
+            try:
+                from .api import fill_route_geometries
+
+                missing = (
+                    db2.query(Route)
+                    .filter((Route.geometry_json.is_(None)) | (Route.geometry_json == ""))
+                    .count()
+                )
+                if missing and db2.query(Route).count() > 0:
+                    import asyncio
+
+                    asyncio.run(fill_route_geometries(db2))
+            except Exception:
+                pass
+            finally:
+                db2.close()
+
+        threading.Thread(target=_backfill_road_geometry, daemon=True, name="road-geometry").start()
 
 
 @app.get("/api/health")

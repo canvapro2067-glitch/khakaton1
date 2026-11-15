@@ -17,7 +17,9 @@ Render можно не использовать, если не нужен API «
 1. [dashboard.render.com](https://dashboard.render.com) → **New** → **Blueprint** → подключите GitHub → репозиторий `khakaton1`.
 2. Render создаст сервис `moloko-api`. Дождитесь **Live**.
 3. Скопируйте URL вида `https://moloko-api-xxxx.onrender.com` (без `/` в конце).
-4. В **Environment** на Render при необходимости добавьте `YANDEX_MAPS_API_KEY` из `.env`.
+4. В **Environment** на Render:
+   - `YANDEX_MAPS_API_KEY` (и при желании `YANDEX_ROUTING_API_KEY`) — карта и точный грузовой маршрут;
+   - `SKIP_ROUTE_GEOMETRY` = `0` (в `render.yaml` уже так): иначе на карте **прямые линии** и пробег без дорожной геометрии.
 
 ## 2. Netlify
 

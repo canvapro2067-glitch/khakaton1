@@ -1,5 +1,5 @@
 import { Bell, Route } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import MapBoard from '../MapBoard'
 import { api } from '../api'
@@ -14,9 +14,30 @@ export default function Dispatcher() {
   const [cfg, setCfg] = useState<any>({})
   const [confirmSolve, setConfirmSolve] = useState(false)
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const roadGeomTried = useRef(false)
+
+  function routesNeedRoadGeometry(routes: any[] | undefined) {
+    if (!routes?.length) return false
+    return routes.every((r) => !Array.isArray(r.geometry) || r.geometry.length < 2)
+  }
 
   async function load() {
-    const [d, c] = await Promise.all([api('/api/dashboard'), api('/api/config')])
+    let d = await api('/api/dashboard')
+    if (routesNeedRoadGeometry(d.routes) && !roadGeomTried.current) {
+      roadGeomTried.current = true
+      setBusy(true)
+      setMsg('На сервере нет линий по дорогам — пересчитываем…')
+      try {
+        await api('/api/routes/rebuild-geometries', { method: 'POST' })
+        d = await api('/api/dashboard')
+        setMsg('')
+      } catch (e: any) {
+        setMsg(e.message || 'Не удалось построить линии по дорогам. Нажмите «Оптимизировать маршруты».')
+      } finally {
+        setBusy(false)
+      }
+    }
+    const c = await api('/api/config')
     setData(d)
     setCfg(c)
   }
@@ -50,7 +71,7 @@ export default function Dispatcher() {
   const hours = c.driver_hours ?? (k.duration_s || 0) / 3600
   const cost = c.cost_byn ?? 0
   const fuelL = c.fuel_l ?? 0
-  const fuelPrice = c.fuel_price_byn ?? 2.45
+  const fuelPrice = c.fuel_price_byn ?? 2.89
   const fuelNorm = c.fuel_l_per_100km ?? 18
 
   return (
